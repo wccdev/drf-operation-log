@@ -1,5 +1,5 @@
 # drf-operation-log
-=======
+
 
 [![GitHub license](https://img.shields.io/github/license/anyidea/drf-operation-log)](https://github.com/anyidea/drf-operation-log/blob/master/LICENSE)
 [![pypi-version](https://img.shields.io/pypi/v/drfexts.svg)](https://pypi.python.org/pypi/drf-operation-log)
