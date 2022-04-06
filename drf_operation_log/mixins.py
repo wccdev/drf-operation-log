@@ -7,7 +7,7 @@ from rest_framework.response import Response
 
 from .utils import flatten_dict, serializer_data_diff, split_get
 from .models import ADDITION, CHANGE, DELETION, OperationLogEntry
-from .serializers import OperationLogEntryListSerializer
+from .serializers import OperationLogEntrySerializer
 
 logger = logging.getLogger(__name__)
 
@@ -117,7 +117,7 @@ class OperationLogMixin:
     @action(
         detail=True,
         name="操作日志",
-        serializer_class=OperationLogEntryListSerializer,
+        serializer_class=OperationLogEntrySerializer,
         ordering=("-action_time",),
     )
     def operationlog(self, request, pk):

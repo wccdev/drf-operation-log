@@ -1,22 +1,19 @@
-from drfexts.viewsets import ExtGenericViewSet
 from rest_framework.mixins import ListModelMixin, RetrieveModelMixin
+from rest_framework.viewsets import GenericViewSet
 from rest_framework.permissions import IsAdminUser
 
-from scf.operationlog.models import OperationLogEntry
-from scf.operationlog.serializers import (
-    OperationLogEntryDetailSerializer,
-    OperationLogEntryListSerializer,
+from .models import OperationLogEntry
+from .serializers import (
+    OperationLogEntrySerializer
 )
 
 
 class OperationlogViewSet(
     ListModelMixin,
     RetrieveModelMixin,
-    ExtGenericViewSet,
+    GenericViewSet,
 ):
     queryset = OperationLogEntry.objects.select_related("user", "content_type")
     permission_classes = (IsAdminUser,)
-    serializer_class = {
-        "default": OperationLogEntryListSerializer,
-        "retrieve": OperationLogEntryDetailSerializer,
-    }
+    serializer_class = OperationLogEntrySerializer,
+
