@@ -118,7 +118,6 @@ class OperationLogMixin:
         detail=True,
         name="操作日志",
         serializer_class=OperationLogEntrySerializer,
-        ordering=("-action_time",),
     )
     def operationlog(self, request, pk):
         """
