@@ -1,7 +1,7 @@
 from collections.abc import MutableMapping
 
 from django.db.models import Manager
-from rest_framework.fields import ChoiceField
+from rest_framework.fields import ChoiceField, BooleanField
 from rest_framework.serializers import Serializer
 
 attribute_sep = "<"
@@ -62,6 +62,9 @@ def serializer_data_diff(old_data: dict, new_data: dict, serializer: Serializer)
                 v_new = v_mapping.get(v_new) or v_new
             elif isinstance(v_old, Manager):
                 v_old = list(v_old.all())
+            elif isinstance(field, BooleanField):
+                v_old = "是" if v_old else "否"
+                v_new = "是" if v_new else "否"
 
             if v_old == v_new or v_old == missing_value:
                 continue
