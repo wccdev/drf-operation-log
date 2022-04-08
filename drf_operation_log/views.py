@@ -15,5 +15,5 @@ class OperationlogViewSet(
 ):
     queryset = OperationLogEntry.objects.select_related("user", "content_type")
     permission_classes = (IsAdminUser,)
-    serializer_class = OperationLogEntrySerializer,
+    serializer_class = OperationLogEntrySerializer
 
