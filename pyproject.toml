@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "drf-operation-log"
-version = "0.3.17"
+version = "0.3.18"
 description = "Operation log for drf serializers."
 authors = ["aiden_lu <aiden_lu@wochacha.com>"]
 
