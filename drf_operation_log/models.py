@@ -98,7 +98,7 @@ class OperationLogEntry(models.Model):
 
     @property
     def operator(self):
-        if hasattr(self.user, "name"):
+        if hasattr(self.user, "name") and self.user.name:
             return self.user.name
 
         return getattr(self.user, self.user.USERNAME_FIELD)
