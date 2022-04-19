@@ -119,7 +119,7 @@ class OperationLogMixin:
         name="操作日志",
         serializer_class=OperationLogEntrySerializer,
     )
-    def operationlog(self, request, pk):
+    def operationlogs(self, request, pk):
         """
         获取该资源操作日志接口
         :param request:

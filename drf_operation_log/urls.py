@@ -4,5 +4,5 @@ from .views import OperationlogViewSet
 
 router = SimpleRouter()
 
-router.register("operationlogs", OperationlogViewSet)
+router.register("operationlogs", OperationlogViewSet, basename='operationlogs')
 urlpatterns = router.urls
