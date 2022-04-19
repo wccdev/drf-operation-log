@@ -96,6 +96,10 @@ class OperationLogEntry(models.Model):
 
         return gettext("LogEntry Object")
 
+    @property
+    def operator(self):
+        return self.user.name or self.user.username
+
     def is_addition(self):
         return self.action_flag == ADDITION
 
