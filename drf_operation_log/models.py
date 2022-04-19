@@ -101,7 +101,7 @@ class OperationLogEntry(models.Model):
         if hasattr(self.user, "name"):
             return self.user.name
 
-        return getattr(self.user, self.USERNAME_FIELD)
+        return getattr(self.user, self.user.USERNAME_FIELD)
 
     def is_addition(self):
         return self.action_flag == ADDITION
