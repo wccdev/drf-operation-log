@@ -137,8 +137,8 @@ class OperationLogMixin:
         queryset = OperationLogEntry.objects.select_related(
             "user", "content_type", "domain_content_type"
         ).filter(
-            object_id=pk,
-            content_type=ContentType.objects.get_for_model(self.queryset.model),
+            domain_object_id=pk,
+            domain_content_type=ContentType.objects.get_for_model(self.queryset.model),
         )  # noqa
         queryset = self.filter_queryset(queryset)  # noqa
         page = self.paginate_queryset(queryset)  # noqa
