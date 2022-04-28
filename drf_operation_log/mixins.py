@@ -2,6 +2,7 @@ import ast
 import logging
 
 from django.contrib.contenttypes.models import ContentType
+from django.db.models import Model
 from rest_framework.decorators import action
 from rest_framework.response import Response
 
@@ -26,6 +27,7 @@ class OperationLogMixin:
     CLEANED_SUBSTITUTE = "********************"
     sensitive_fields = {}
     operationlog_action_exclude = []
+    operationlog_domain_field: str = None
 
     def _get_view_method(self, request):
         """Get view method."""
@@ -126,7 +128,7 @@ class OperationLogMixin:
         :param pk: 主键
         :return:
         """
-        queryset = OperationLogEntry.objects.select_related("user", "content_type").filter(
+        queryset = OperationLogEntry.objects.select_related("user", "content_type", "domain_content_type").filter(
             object_id=pk, content_type=ContentType.objects.get_for_model(self.queryset.model)
         )  # noqa
         queryset = self.filter_queryset(queryset)  # noqa
@@ -183,8 +185,22 @@ class OperationLogMixin:
             action_flag=self._get_action_flag(request),
             content_type=ContentType.objects.get_for_model(instance),
             object_id=instance.pk,
+            domain_content_type=ContentType.objects.get_for_model(instance),
+            domain_object_id=instance.pk,
             change_message=change_message or {},
         )
+
+        if self.operationlog_domain_field:
+            attrs = self.operationlog_domain_field.split("__")
+            obj = instance
+            for attr in attrs:
+                obj = getattr(obj, attr)
+
+            if not isinstance(obj, Model):
+                raise ValueError("'operationlog_domain_field' must refer to a model!")
+
+            self.domain_content_type = ContentType.objects.get_for_model(obj)
+            self.domain_object_id = obj.pk
 
     def finalize_response(self, request, response, *args, **kwargs):
         if (

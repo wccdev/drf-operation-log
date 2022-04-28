@@ -67,6 +67,14 @@ class OperationLogEntry(models.Model):
         null=True,
     )
     object_id = models.TextField(_("对象ID"), blank=True, null=True)
+    domain_content_type = models.ForeignKey(
+        ContentType,
+        models.SET_NULL,
+        verbose_name=_("同范围操作对象"),
+        blank=True,
+        null=True,
+    )
+    domain_object_id = models.TextField(_("同范围对象ID"), blank=True, null=True)
     action = models.CharField(_("动作"), max_length=32)
     action_name = models.CharField(_("动作名称"), max_length=32)
     action_flag = models.PositiveSmallIntegerField(_("操作类型"), choices=ACTION_FLAG_CHOICES)
