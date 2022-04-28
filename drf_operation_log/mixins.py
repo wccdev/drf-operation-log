@@ -71,7 +71,9 @@ class OperationLogMixin:
 
             data = dict(data)
             if self.sensitive_fields:
-                SENSITIVE_FIELDS = SENSITIVE_FIELDS | {field.lower() for field in self.sensitive_fields}
+                SENSITIVE_FIELDS = SENSITIVE_FIELDS | {
+                    field.lower() for field in self.sensitive_fields
+                }
 
             for key, value in data.items():
                 try:
@@ -89,7 +91,11 @@ class OperationLogMixin:
 
         request = self.request  # noqa
         if self.should_log(request):
-            self._initial_log(request, serializer.instance, new_message=flatten_dict(serializer.validated_data))
+            self._initial_log(
+                request,
+                serializer.instance,
+                new_message=flatten_dict(serializer.validated_data),
+            )
 
     def perform_update(self, serializer):
         request = self.request  # noqa
@@ -128,8 +134,11 @@ class OperationLogMixin:
         :param pk: 主键
         :return:
         """
-        queryset = OperationLogEntry.objects.select_related("user", "content_type", "domain_content_type").filter(
-            object_id=pk, content_type=ContentType.objects.get_for_model(self.queryset.model)
+        queryset = OperationLogEntry.objects.select_related(
+            "user", "content_type", "domain_content_type"
+        ).filter(
+            object_id=pk,
+            content_type=ContentType.objects.get_for_model(self.queryset.model),
         )  # noqa
         queryset = self.filter_queryset(queryset)  # noqa
         page = self.paginate_queryset(queryset)  # noqa
@@ -147,7 +156,8 @@ class OperationLogMixin:
         :return:
         """
         return (
-            request.method in ("POST", "PUT", "PATCH", "DELETE") and self.action not in self.operationlog_action_exclude
+            request.method in ("POST", "PUT", "PATCH", "DELETE")
+            and self.action not in self.operationlog_action_exclude
         )
 
     def _get_action_name(self) -> str:
@@ -173,7 +183,13 @@ class OperationLogMixin:
             return DELETION
 
     def _initial_log(
-        self, request, instance, old_message=None, new_message=None, change_message=None, serializer=None
+        self,
+        request,
+        instance,
+        old_message=None,
+        new_message=None,
+        change_message=None,
+        serializer=None,
     ) -> None:
         if change_message is None and old_message and new_message and serializer:
             change_message = serializer_data_diff(old_message, new_message, serializer)
@@ -199,8 +215,10 @@ class OperationLogMixin:
             if not isinstance(obj, Model):
                 raise ValueError("'operationlog_domain_field' must refer to a model!")
 
-            self.domain_content_type = ContentType.objects.get_for_model(obj)
-            self.domain_object_id = obj.pk
+            self.operation_log.domain_content_type = ContentType.objects.get_for_model(
+                obj
+            )
+            self.operation_log.domain_object_id = obj.pk
 
     def finalize_response(self, request, response, *args, **kwargs):
         if (
