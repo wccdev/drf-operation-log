@@ -63,6 +63,7 @@ class OperationLogEntry(models.Model):
         ContentType,
         models.SET_NULL,
         verbose_name=_("操作对象"),
+        related_name="+",
         blank=True,
         null=True,
     )
@@ -71,6 +72,7 @@ class OperationLogEntry(models.Model):
         ContentType,
         models.SET_NULL,
         verbose_name=_("同范围操作对象"),
+        related_name="+",
         blank=True,
         null=True,
     )
