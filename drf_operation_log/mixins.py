@@ -232,9 +232,6 @@ class OperationLogMixin:
     def finalize_response(self, request, response, *args, **kwargs):
         if (
             hasattr(self, "operation_logs")
-            and self.operation_log.action  # noqa
-            and self.operation_log.object_id  # noqa
-            and self.operation_log.content_type  # noqa
             and not getattr(response, "exception", False)
         ):
             OperationLogEntry.objects.bulk_create(self.operation_logs)
