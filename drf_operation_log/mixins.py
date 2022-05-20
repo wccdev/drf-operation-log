@@ -29,6 +29,10 @@ class OperationLogMixin:
     operationlog_action_exclude = []
     operationlog_domain_field: str = None
 
+    def initial(self, request, *args, **kwargs):
+        self.operation_logs = []  # noqa
+        super().initial(request, *args, **kwargs)  # noqa
+
     def _get_view_method(self, request):
         """Get view method."""
         if hasattr(self, "action"):
@@ -91,11 +95,12 @@ class OperationLogMixin:
 
         request = self.request  # noqa
         if self.should_log(request):
-            self._initial_log(
+            operation_log = self._initial_log(
                 request,
                 serializer.instance,
                 new_message=flatten_dict(serializer.validated_data),
             )
+            self.operation_logs.append(operation_log)
 
     def perform_update(self, serializer):
         request = self.request  # noqa
@@ -105,20 +110,22 @@ class OperationLogMixin:
             for k in new_message.keys():
                 old_message[k] = split_get(serializer.instance, k)
 
-            self._initial_log(
+            operation_log = self._initial_log(
                 request,
                 serializer.instance,
                 old_message=old_message,
                 new_message=new_message,
                 serializer=serializer,
             )
+            self.operation_logs.append(operation_log)
 
         super().perform_update(serializer)  # noqa
 
     def perform_destroy(self, instance):
         request = self.request  # noqa
         if self.should_log(request):
-            self._initial_log(request, instance)
+            operation_log = self._initial_log(request, instance)
+            self.operation_logs.append(operation_log)
 
         super().perform_destroy(instance)  # noqa
 
@@ -156,22 +163,22 @@ class OperationLogMixin:
         :return:
         """
         return (
-            request.method in ("POST", "PUT", "PATCH", "DELETE")
-            and self.action not in self.operationlog_action_exclude
+            request.method.upper() in ("POST", "PUT", "PATCH", "DELETE")
+            and self.action not in self.operationlog_action_exclude  # noqa
         )
 
     def _get_action_name(self) -> str:
         """
         获取动作名称
         """
-        if self.action == "create":
+        if self.action == "create":  # noqa
             return "新增"
-        elif self.action in ("update", "partial_update"):
+        elif self.action in ("update", "partial_update"):  # noqa
             return "编辑"
-        elif self.action == "destroy":
+        elif self.action == "destroy":  # noqa
             return "删除"
         else:
-            return getattr(self, self.action).kwargs["name"]
+            return getattr(self, self.action).kwargs["name"]  # noqa
 
     @staticmethod
     def _get_action_flag(request) -> int:
@@ -190,13 +197,13 @@ class OperationLogMixin:
         new_message=None,
         change_message=None,
         serializer=None,
-    ) -> None:
+    ) -> OperationLogEntry:
         if change_message is None and old_message and new_message and serializer:
             change_message = serializer_data_diff(old_message, new_message, serializer)
 
-        self.operation_log = OperationLogEntry(
+        operation_log = OperationLogEntry(
             user=request.user,
-            action=self.action,
+            action=self.action,  # noqa
             action_name=self._get_action_name(),
             action_flag=self._get_action_flag(request),
             content_type=ContentType.objects.get_for_model(instance),
@@ -215,19 +222,22 @@ class OperationLogMixin:
             if not isinstance(obj, Model):
                 raise ValueError("'operationlog_domain_field' must refer to a model!")
 
-            self.operation_log.domain_content_type = ContentType.objects.get_for_model(
+            operation_log.domain_content_type = ContentType.objects.get_for_model(
                 obj
             )
-            self.operation_log.domain_object_id = obj.pk
+            operation_log.domain_object_id = obj.pk
+
+        return operation_log
 
     def finalize_response(self, request, response, *args, **kwargs):
         if (
-            hasattr(self, "operation_log")
-            and self.operation_log.action
-            and self.operation_log.object_id
-            and self.operation_log.content_type
+            hasattr(self, "operation_logs")
+            and self.operation_log.action  # noqa
+            and self.operation_log.object_id  # noqa
+            and self.operation_log.content_type  # noqa
             and not getattr(response, "exception", False)
         ):
-            self.operation_log.save()
+            OperationLogEntry.objects.bulk_create(self.operation_logs)
+            self.operation_logs.clear()
 
-        return super().finalize_response(request, response, *args, **kwargs)
+        return super().finalize_response(request, response, *args, **kwargs)  # noqa
