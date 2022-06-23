@@ -15,12 +15,12 @@ logger = logging.getLogger(__name__)
 class OperationLogMixin:
     """
     DRF 操作日志Mixin
-    必须同时满足如下三个要求的操作才会记录
+    必须同时满足如下四个要求的操作才会记录
     1. 写操作(POST, PUT, PATCH, DELETE)
     2. 未被包含在`operationlog_action_exclude`中的action
-    3. action 为 create, update, partial_update 或 destroy
+    3. action 为 create, update, partial_update, destroy（注意：自定义action需要调用对应ModelSerializer的save方法才会记录操作日志）
 
-    自定义action需要自己创建operation_log
+    其他情况需要自己创建operation_log
     """
 
     CLEANED_SUBSTITUTE = "********************"
@@ -69,7 +69,7 @@ class OperationLogMixin:
 
             data = dict(data)
             if self.sensitive_fields:
-                SENSITIVE_FIELDS = SENSITIVE_FIELDS | {field.lower() for field in self.sensitive_fields}
+                SENSITIVE_FIELDS |= {field.lower() for field in self.sensitive_fields}
 
             for key, value in data.items():
                 try:
@@ -87,14 +87,14 @@ class OperationLogMixin:
 
         request = self.request  # noqa
         if self.should_log(request):
-            self._initial_log(request, serializer.instance, new_message=flatten_dict(serializer.validated_data))
+            self._initial_log(request, serializer.instance, serializer=serializer)
 
     def perform_update(self, serializer):
         request = self.request  # noqa
         if self.should_log(request):
-            new_message = flatten_dict(serializer.validated_data)
+            new_message = serializer.validated_data
             old_message = {}
-            for k in new_message.keys():
+            for k in new_data.keys():
                 old_message[k] = split_get(serializer.instance, k)
 
             self._initial_log(
@@ -170,20 +170,17 @@ class OperationLogMixin:
         elif request.method == "DELETE":
             return DELETION
 
-    def _initial_log(
-        self, request, instance, old_message=None, new_message=None, change_message=None, serializer=None
-    ) -> None:
-        if change_message is None and old_message and new_message and serializer:
-            change_message = serializer_data_diff(old_message, new_message, serializer)
-
-        self.operation_log = OperationLogEntry(
+    def _initial_log(self, request, instance, old_message=None, new_message=None, serializer=None) -> None:
+        self.operation_log = OperationLogEntry.objects.log_operation(
             user=request.user,
             action=self.action,
             action_name=self._get_action_name(),
             action_flag=self._get_action_flag(request),
-            content_type=ContentType.objects.get_for_model(instance),
-            object_id=instance.pk,
-            change_message=change_message or {},
+            instance=instance,
+            old_message=old_message,
+            new_message=new_message,
+            serializer=serializer,
+            save_db=False,
         )
 
     def finalize_response(self, request, response, *args, **kwargs):

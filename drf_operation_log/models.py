@@ -26,25 +26,36 @@ ACTION_FLAG_CHOICES = (
 class OperationLogEntryManager(models.Manager):
     use_in_migrations = True
 
-    def log_action(
+    def log_operation(
         self,
-        user_id,
-        content_type_id,
-        object_id,
-        object_repr,
+        user,
+        action,
+        action_name,
         action_flag,
-        change_message="",
-    ):
-        if isinstance(change_message, list):
-            change_message = json.dumps(change_message)
-        return self.model.objects.create(
-            user_id=user_id,
-            content_type_id=content_type_id,
-            object_id=str(object_id),
-            object_repr=object_repr[:200],
+        instance,
+        old_message=None,
+        new_message=None,
+        change_message=None,
+        serializer=None,
+        save_db=True,
+    ) -> None:
+
+        if action_flag == CHANGE and change_message is None:
+            change_message = serializer_data_diff(serializer, old_message, new_message)
+
+        operation_log = self.model(
+            user=user,
+            action=action,
+            action_name=action_name,
             action_flag=action_flag,
-            change_message=change_message,
+            content_type=ContentType.objects.get_for_model(instance),
+            object_id=instance.pk,
+            change_message=change_message or {},
         )
+        if save_db:
+            operation_log.save()
+
+        return operation_log
 
 
 class OperationLogEntry(models.Model):
@@ -104,47 +115,6 @@ class OperationLogEntry(models.Model):
 
     def is_deletion(self):
         return self.action_flag == DELETION
-
-    def get_change_message(self):
-        """
-        If self.change_message is a JSON structure, interpret it as a change
-        string, properly translated.
-        """
-        if self.change_message and self.change_message[0] == "[":
-            try:
-                change_message = json.loads(self.change_message)
-            except json.JSONDecodeError:
-                return self.change_message
-            messages = []
-            for sub_message in change_message:
-                if "added" in sub_message:
-                    if sub_message["added"]:
-                        sub_message["added"]["name"] = gettext(sub_message["added"]["name"])
-                        messages.append(gettext("Added {name} “{object}”.").format(**sub_message["added"]))
-                    else:
-                        messages.append(gettext("Added."))
-
-                elif "changed" in sub_message:
-                    sub_message["changed"]["fields"] = get_text_list(
-                        [gettext(field_name) for field_name in sub_message["changed"]["fields"]],
-                        gettext("and"),
-                    )
-                    if "name" in sub_message["changed"]:
-                        sub_message["changed"]["name"] = gettext(sub_message["changed"]["name"])
-                        messages.append(
-                            gettext("Changed {fields} for {name} “{object}”.").format(**sub_message["changed"])
-                        )
-                    else:
-                        messages.append(gettext("Changed {fields}.").format(**sub_message["changed"]))
-
-                elif "deleted" in sub_message:
-                    sub_message["deleted"]["name"] = gettext(sub_message["deleted"]["name"])
-                    messages.append(gettext("Deleted {name} “{object}”.").format(**sub_message["deleted"]))
-
-            change_message = " ".join(msg[0].upper() + msg[1:] for msg in messages)
-            return change_message or gettext("No fields changed.")
-        else:
-            return self.change_message
 
     def get_edited_object(self):
         """Return the edited object represented by this log entry."""
