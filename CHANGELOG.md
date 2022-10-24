@@ -1,3 +1,9 @@
+## v0.5.3 (2022-10-24)
+
+### Fix
+
+- extract action name from serializer
+
 ## v0.5.2 (2022-10-24)
 
 ### Refactor
