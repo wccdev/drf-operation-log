@@ -8,7 +8,7 @@ class OperationLogEntrySerializer(serializers.ModelSerializer):
     change_message = serializers.ListField(
         source="get_change_message", child=serializers.CharField(), label="操作内容"
     )
-    content_type_name = serializers.CharField(source="content_type.name", label="对象名称")
+    content_type_name = serializers.CharField(source="object_repr", label="操作对象")
     domain_content_type_name = serializers.CharField(
         source="domain_content_type.name", default="", label="域对象名称"
     )
@@ -16,4 +16,12 @@ class OperationLogEntrySerializer(serializers.ModelSerializer):
 
     class Meta:
         model = OperationLogEntry
-        fields = "__all__"
+        exclude = [
+            "object_repr",
+            "domain_object_id",
+            "object_id",
+            "domain_content_type",
+            "content_type",
+            "user",
+            "action_flag",
+        ]

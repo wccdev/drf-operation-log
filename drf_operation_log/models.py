@@ -69,6 +69,7 @@ class OperationLogEntry(models.Model):
         null=True,
     )
     object_id = models.TextField(_("对象ID"), blank=True, null=True)
+    object_repr = models.CharField(_("操作对象"), max_length=128)
     domain_content_type = models.ForeignKey(
         ContentType,
         models.SET_NULL,
@@ -127,9 +128,9 @@ class OperationLogEntry(models.Model):
         string, properly translated.
         """
         if self.is_addition():
-            return [f"新增 {self.content_type.name}"]
+            return [f"新增 {self.object_repr}"]
         elif self.is_deletion():
-            return [f"删除 {self.content_type.name}"]
+            return [f"删除 {self.object_repr}"]
         elif not self.change_message:
             return ["未更改"]
 

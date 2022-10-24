@@ -166,6 +166,7 @@ class OperationLogMixin:
             action_flag=self._get_action_flag(request),
             content_type=ContentType.objects.get_for_model(instance),
             object_id=instance.pk,
+            object_repr=ContentType.objects.get_for_model(instance).name,
             domain_content_type=ContentType.objects.get_for_model(instance),
             domain_object_id=instance.pk,
             change_message=change_message or {},
@@ -182,6 +183,7 @@ class OperationLogMixin:
 
             operation_log.domain_content_type = ContentType.objects.get_for_model(obj)
             operation_log.domain_object_id = obj.pk
+            operation_log.object_repr = (ContentType.objects.get_for_model(obj).name,)
 
         return operation_log
 
