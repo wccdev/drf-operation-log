@@ -1,3 +1,9 @@
+## v0.6.0 (2022-10-24)
+
+### Feat
+
+- add support for searching by  and
+
 ## v0.5.3 (2022-10-24)
 
 ### Fix
