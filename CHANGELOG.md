@@ -1,3 +1,9 @@
+## v0.5.2 (2022-10-24)
+
+### Refactor
+
+- support filter operation
+
 ## v0.5.1 (2022-10-24)
 
 ### Fix
