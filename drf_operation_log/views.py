@@ -16,3 +16,4 @@ class OperationlogViewSet(
     )
     permission_classes = (IsAdminUser,)
     serializer_class = OperationLogEntrySerializer
+    search_fields = ["user__username", "object_repr"]
