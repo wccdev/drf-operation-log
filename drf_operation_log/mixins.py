@@ -2,6 +2,7 @@ import logging
 
 from django.contrib.contenttypes.models import ContentType
 from django.db.models import Model
+from rest_framework import serializers
 from rest_framework.decorators import action
 from rest_framework.response import Response
 
@@ -44,6 +45,36 @@ class OperationLogMixin:
         if user.is_anonymous:
             return None
         return user
+
+    def _get_action_name(self, serializer) -> str:
+        """
+        获取动作名称
+        """
+        if self.action == "create":  # noqa
+            return "新增"
+        elif self.action in ("update", "partial_update"):  # noqa
+            return "编辑"
+        elif self.action == "destroy":  # noqa
+            return "删除"
+
+        if (
+            self._get_action_flag(self.request) == CHANGE
+            and "action" in serializer.fields
+        ):
+            if isinstance(serializer.fields["action"], serializers.ChoiceField):
+                action_choices = serializer.fields["action"].choices
+                return action_choices.get(serializer.validated_data["action"])
+
+        return getattr(self, self.action).kwargs["name"]  # noqa
+
+    @staticmethod
+    def _get_action_flag(request) -> int:
+        if request.method == "POST":
+            return ADDITION
+        elif request.method in ("PUT", "PATCH"):
+            return CHANGE
+        elif request.method == "DELETE":
+            return DELETION
 
     def perform_create(self, serializer):
         super().perform_create(serializer)  # noqa
@@ -122,28 +153,6 @@ class OperationLogMixin:
             and self.action not in self.operationlog_action_exclude  # noqa
         )
 
-    def _get_action_name(self) -> str:
-        """
-        获取动作名称
-        """
-        if self.action == "create":  # noqa
-            return "新增"
-        elif self.action in ("update", "partial_update"):  # noqa
-            return "编辑"
-        elif self.action == "destroy":  # noqa
-            return "删除"
-        else:
-            return getattr(self, self.action).kwargs["name"]  # noqa
-
-    @staticmethod
-    def _get_action_flag(request) -> int:
-        if request.method == "POST":
-            return ADDITION
-        elif request.method in ("PUT", "PATCH"):
-            return CHANGE
-        elif request.method == "DELETE":
-            return DELETION
-
     def _initial_log(
         self,
         request,
@@ -162,7 +171,7 @@ class OperationLogMixin:
         operation_log = OperationLogEntry(
             user=request.user,
             action=self.action,  # noqa
-            action_name=self._get_action_name(),
+            action_name=self._get_action_name(serializer),
             action_flag=self._get_action_flag(request),
             content_type=ContentType.objects.get_for_model(instance),
             object_id=instance.pk,
