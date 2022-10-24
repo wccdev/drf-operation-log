@@ -1,16 +1,15 @@
 import json
 
 from django.conf import settings
-from django.contrib.admin.utils import quote
 from django.contrib.contenttypes.models import ContentType
 from django.db import models
 from django.urls import NoReverseMatch, reverse
 from django.utils import timezone
-from django.utils.text import get_text_list
 from django.utils.translation import gettext
 from django.utils.translation import gettext_lazy as _
 
 from .encoders import JSONEncoder
+from .utils import clean_data
 
 ADDITION = 1
 CHANGE = 2
@@ -26,36 +25,27 @@ ACTION_FLAG_CHOICES = (
 class OperationLogEntryManager(models.Manager):
     use_in_migrations = True
 
-    def log_operation(
+    def log_action(
         self,
-        user,
-        action,
-        action_name,
+        user_id,
+        content_type_id,
+        object_id,
+        object_repr,
         action_flag,
-        instance,
-        old_message=None,
-        new_message=None,
-        change_message=None,
-        serializer=None,
-        save_db=True,
-    ) -> None:
+        change_message="",
+    ):
+        change_message = clean_data(change_message)
+        if isinstance(change_message, list):
+            change_message = json.dumps(change_message)
 
-        if action_flag == CHANGE and change_message is None:
-            change_message = serializer_data_diff(serializer, old_message, new_message)
-
-        operation_log = self.model(
-            user=user,
-            action=action,
-            action_name=action_name,
+        return self.model.objects.create(
+            user_id=user_id,
+            content_type_id=content_type_id,
+            object_id=str(object_id),
+            object_repr=object_repr[:200],
             action_flag=action_flag,
-            content_type=ContentType.objects.get_for_model(instance),
-            object_id=instance.pk,
-            change_message=change_message or {},
+            change_message=change_message,
         )
-        if save_db:
-            operation_log.save()
-
-        return operation_log
 
 
 class OperationLogEntry(models.Model):
@@ -74,14 +64,29 @@ class OperationLogEntry(models.Model):
         ContentType,
         models.SET_NULL,
         verbose_name=_("操作对象"),
+        related_name="+",
         blank=True,
         null=True,
     )
     object_id = models.TextField(_("对象ID"), blank=True, null=True)
+    domain_content_type = models.ForeignKey(
+        ContentType,
+        models.SET_NULL,
+        verbose_name=_("同范围操作对象"),
+        related_name="+",
+        blank=True,
+        null=True,
+    )
+    domain_object_id = models.TextField(_("同范围对象ID"), blank=True, null=True)
     action = models.CharField(_("动作"), max_length=32)
     action_name = models.CharField(_("动作名称"), max_length=32)
-    action_flag = models.PositiveSmallIntegerField(_("操作类型"), choices=ACTION_FLAG_CHOICES)
-    change_message = models.JSONField(_("差异信息"), blank=True, default=dict, encoder=JSONEncoder)
+    action_flag = models.PositiveSmallIntegerField(
+        _("操作类型"), choices=ACTION_FLAG_CHOICES
+    )
+    change_message = models.JSONField(
+        _("差异信息"), blank=True, default=dict, encoder=JSONEncoder
+    )
+    extra = models.JSONField(_("其他信息"), blank=True, null=True)
 
     objects = OperationLogEntryManager()
 
@@ -116,6 +121,27 @@ class OperationLogEntry(models.Model):
     def is_deletion(self):
         return self.action_flag == DELETION
 
+    def get_change_message(self):
+        """
+        If self.change_message is a JSON structure, interpret it as a change
+        string, properly translated.
+        """
+        if self.is_addition():
+            return [f"新增 {self.content_type.name}"]
+        elif self.is_deletion():
+            return [f"删除 {self.content_type.name}"]
+        elif not self.change_message:
+            return ["未更改"]
+
+        ret = []
+        for field_name, (old_value, new_value) in self.change_message.items():
+            old_value = "" if old_value is None else old_value
+            new_value = "" if new_value is None else new_value
+            message = f"修改 {field_name}， 旧值“{old_value}”，新值“{new_value}”"
+            ret.append(message)
+
+        return ret
+
     def get_edited_object(self):
         """Return the edited object represented by this log entry."""
         return self.content_type.get_object_for_this_type(pk=self.object_id)
@@ -125,12 +151,13 @@ class OperationLogEntry(models.Model):
         Return the admin URL to edit the object represented by this log entry.
         """
         if self.content_type and self.object_id:
-            url_name = "admin:%s_%s_change" % (
-                self.content_type.app_label,
-                self.content_type.model,
-            )
+            url_name = "operationlogs-list"
             try:
-                return reverse(url_name, args=(quote(self.object_id),))
+                url = reverse(url_name)
+                return (
+                    f"{url}?content_type={self.content_type.pk}"
+                    "&object_id={self.object_id}"
+                )
             except NoReverseMatch:
                 pass
         return None
