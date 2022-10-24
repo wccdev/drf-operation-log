@@ -1,6 +1,18 @@
+[virtualenvs]
+create = true
+in-project = true
+
+[tool.commitizen]
+version = "0.4.2"
+tag_format = "v$major.$minor.$patch$prerelease"
+version_files = [
+    "pyproject.toml:version",
+    "drf_operation_log/__init__.py"
+]
+
 [tool.poetry]
 name = "drf-operation-log"
-version = "0.3.5"
+version = "0.4.2"
 description = "Operation log for drf serializers."
 authors = ["aiden_lu <aiden_lu@wochacha.com>"]
 
@@ -13,13 +25,42 @@ include = [
 ]
 
 [tool.poetry.dependencies]
-python = ">=3.8"
-Django = "^3.2"
-djangorestframework = "^3.13.1"
+python = ">=3.8,<4.0.0"
+Django = ">=3.2"
+djangorestframework = ">=3.13.1"
 
-[tool.poetry.dev-dependencies]
+[tool.poetry.group.dev.dependencies]
+flake8 = "^4.0.1"
+pytest = "^6.2.5"
+
+[tool.black]
+line-length = 89
+target-version = ['py38', 'py39']
+include = '\.pyi?$'
+exclude = '''
+/(
+    \.eggs
+  | \.git
+  | \.hg
+  | \.mypy_cache
+  | \.tox
+  | \.venv
+  | _build
+  | buck-out
+  | build
+  | dist
+
+  # The following are specific to Black, you probably don't want those.
+  | blib2to3
+  | tests/data
+  | profiling
+  | migrations
+)/
+'''
+
+[tool.isort]
+profile = "black"
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]
 build-backend = "poetry.core.masonry.api"
-

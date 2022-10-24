@@ -1,11 +1,15 @@
+import ast
 from collections.abc import MutableMapping
 
 from django.db.models import Manager
-from rest_framework.fields import ChoiceField, BooleanField
+from rest_framework.fields import BooleanField, ChoiceField
 from rest_framework.serializers import Serializer
 
-attribute_sep = "<"
+attribute_sep = ">"
 missing_value = object()
+
+CLEANED_SUBSTITUTE = "********************"
+sensitive_fields = {}
 
 
 def split_get(o: object, concat_attr: str, sep: str = attribute_sep):
@@ -31,7 +35,9 @@ def _flatten_dict_gen(d, parent_key, sep):
         if isinstance(v, MutableMapping):
             yield from flatten_dict(v, new_key, sep=sep).items()
         elif isinstance(v, Serializer):
-            yield from flatten_dict(_get_source_fields(v.fields), new_key, sep=sep).items()
+            yield from flatten_dict(
+                _get_source_fields(v.fields), new_key, sep=sep
+            ).items()
         else:
             yield new_key, v
 
@@ -73,3 +79,49 @@ def serializer_data_diff(old_data: dict, new_data: dict, serializer: Serializer)
         except KeyError:
             pass
     return ret
+
+
+def clean_data(data, sensitive_fields=None):
+    """
+    Clean a dictionary of data of potentially sensitive info before
+    sending to the database.
+    Function based on the "_clean_credentials" function of django
+    (https://github.com/django/django/blob/stable/1.11.x/django/contrib/auth/__init__.py#L50)
+    Fields defined by django are by default cleaned with this function
+    You can define your own sensitive fields in your view by defining a set
+    eg: sensitive_fields = {'field1', 'field2'}
+    """
+    sensitive_fields = sensitive_fields or {}
+
+    if isinstance(data, bytes):
+        data = data.decode(errors="replace")
+
+    if isinstance(data, list):
+        return [clean_data(d) for d in data]
+
+    if isinstance(data, dict):
+        SENSITIVE_FIELDS: set = {
+            "api",
+            "token",
+            "key",
+            "secret",
+            "password",
+            "signature",
+        }
+
+        data = dict(data)
+        if sensitive_fields:
+            SENSITIVE_FIELDS = SENSITIVE_FIELDS | {
+                field.lower() for field in sensitive_fields
+            }
+
+        for key, value in data.items():
+            try:
+                value = ast.literal_eval(value)
+            except (ValueError, SyntaxError):
+                pass
+            if isinstance(value, (list, dict)):
+                data[key] = clean_data(value)
+            if key.lower() in SENSITIVE_FIELDS:
+                data[key] = CLEANED_SUBSTITUTE
+    return data
