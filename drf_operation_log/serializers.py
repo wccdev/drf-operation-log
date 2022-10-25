@@ -4,8 +4,15 @@ from .models import OperationLogEntry
 
 
 class OperationLogEntrySerializer(serializers.ModelSerializer):
-    username = serializers.CharField(source="user.username", default="", label="操作人")
-    content_type = serializers.CharField()
+    operator = serializers.CharField(source="user.username", default="", label="操作人")
+    change_message = serializers.ListField(
+        source="get_change_message", child=serializers.CharField(), label="操作内容"
+    )
+    content_type_name = serializers.CharField(source="content_type.name", label="对象名称")
+    domain_content_type_name = serializers.CharField(
+        source="domain_content_type.name", default="", label="域对象名称"
+    )
+    change_message_raw = serializers.JSONField(source="change_message")
 
     class Meta:
         model = OperationLogEntry
