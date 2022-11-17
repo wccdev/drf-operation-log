@@ -9,7 +9,14 @@ from rest_framework.response import Response
 from .models import ADDITION, CHANGE, DELETION, OperationLogEntry
 from .serializers import OperationLogEntrySerializer
 from .signals import operation_logs_pre_save
-from .utils import clean_data, flatten_dict, serializer_data_diff, split_get
+from .utils import (
+    clean_data,
+    clean_excluded_fields,
+    flatten_dict,
+    format_excluded_fields,
+    serializer_changed_data_diff,
+    serializer_data_diff,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -91,16 +98,12 @@ class OperationLogMixin:
     def perform_update(self, serializer):
         request = self.request  # noqa
         if self.should_log(request):
-            new_message = flatten_dict(serializer.validated_data)
-            old_message = {}
-            for k in new_message.keys():
-                old_message[k] = split_get(serializer.instance, k)
+            change_message = serializer_data_diff(serializer)
 
             operation_log = self._initial_log(
                 request,
                 serializer.instance,
-                old_message=old_message,
-                new_message=new_message,
+                change_message=change_message,
                 serializer=serializer,
             )
             self.operation_logs.append(operation_log)
@@ -115,6 +118,9 @@ class OperationLogMixin:
 
         super().perform_destroy(instance)  # noqa
 
+    def get_excluded_log_fields(self, request) -> list:
+        return []
+
     @action(
         detail=True,
         name="操作日志",
@@ -127,17 +133,28 @@ class OperationLogMixin:
         :param pk: 主键
         :return:
         """
+        excluded_fields = self.get_excluded_log_fields(request)
         queryset = OperationLogEntry.objects.select_related(
             "user", "content_type", "domain_content_type"
         ).filter(
             domain_object_id=pk,
             domain_content_type=ContentType.objects.get_for_model(self.queryset.model),
         )  # noqa
+
         queryset = self.filter_queryset(queryset)  # noqa
         page = self.paginate_queryset(queryset)  # noqa
         if page is not None:
             serializer = self.get_serializer(page, many=True)  # noqa
             return self.get_paginated_response(serializer.data)  # noqa
+
+        if excluded_fields:
+            formatted_excludes_fields = format_excluded_fields(excluded_fields)
+            for q in queryset:
+                q.changed_message = clean_excluded_fields(
+                    q.changed_message,
+                    formatted_excludes_fields[0],
+                    formatted_excludes_fields[1],
+                )
 
         serializer = self.get_serializer(queryset, many=True)  # noqa
         return Response(serializer.data)
@@ -163,22 +180,31 @@ class OperationLogMixin:
         serializer=None,
     ) -> OperationLogEntry:
         if change_message is None and old_message and new_message and serializer:
-            change_message = serializer_data_diff(old_message, new_message, serializer)
+            change_message = [
+                serializer_changed_data_diff(old_message, new_message, serializer)
+            ]
+
+        action_flag = self._get_action_flag(request)
 
         if change_message:
             change_message = clean_data(change_message)
+        else:
+            if action_flag == ADDITION:
+                change_message = [{"added": []}]
+            elif action_flag == DELETION:
+                change_message = [{"deleted": []}]
 
         operation_log = OperationLogEntry(
             user=request.user,
             action=self.action,  # noqa
             action_name=self._get_action_name(serializer),
-            action_flag=self._get_action_flag(request),
+            action_flag=action_flag,
             content_type=ContentType.objects.get_for_model(instance),
             object_id=instance.pk,
             object_repr=ContentType.objects.get_for_model(instance).name,
             domain_content_type=ContentType.objects.get_for_model(instance),
             domain_object_id=instance.pk,
-            change_message=change_message or {},
+            change_message=change_message or [],
         )
 
         if self.operationlog_domain_field:
