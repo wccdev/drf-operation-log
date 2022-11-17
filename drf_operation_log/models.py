@@ -69,6 +69,7 @@ class OperationLogEntry(models.Model):
         null=True,
     )
     object_id = models.TextField(_("对象ID"), blank=True, null=True)
+    object_repr = models.CharField(_("操作对象"), max_length=128)
     domain_content_type = models.ForeignKey(
         ContentType,
         models.SET_NULL,
@@ -126,21 +127,21 @@ class OperationLogEntry(models.Model):
         If self.change_message is a JSON structure, interpret it as a change
         string, properly translated.
         """
-        if self.is_addition():
-            return [f"新增 {self.content_type.name}"]
-        elif self.is_deletion():
-            return [f"删除 {self.content_type.name}"]
-        elif not self.change_message:
-            return ["未更改"]
+        # if self.is_addition():
+        #     return [f"新增 {self.object_repr}"]
+        # elif self.is_deletion():
+        #     return [f"删除 {self.object_repr}"]
+        # elif not self.change_message:
+        #     return ["未更改"]
 
-        ret = []
-        for field_name, (old_value, new_value) in self.change_message.items():
-            old_value = "" if old_value is None else old_value
-            new_value = "" if new_value is None else new_value
-            message = f"修改 {field_name}， 旧值“{old_value}”，新值“{new_value}”"
-            ret.append(message)
+        # ret = []
+        # for field_name, (old_value, new_value) in self.change_message.items():
+        #     old_value = "" if old_value is None else old_value
+        #     new_value = "" if new_value is None else new_value
+        #     message = f"修改 {field_name}， 旧值“{old_value}”，新值“{new_value}”"
+        #     ret.append(message)
 
-        return ret
+        return self.change_message
 
     def get_edited_object(self):
         """Return the edited object represented by this log entry."""
