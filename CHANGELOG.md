@@ -1,3 +1,13 @@
+## v1.0.0 (2022-11-17)
+
+### BREAKING CHANGE
+
+- 调整log:change_message结构
+
+### Refactor
+
+- 调整log结构
+
 ## v0.6.0 (2022-10-24)
 
 ### Feat
