@@ -5,7 +5,7 @@ from .models import OperationLogEntry
 
 class OperationLogEntrySerializer(serializers.ModelSerializer):
     operator = serializers.CharField(source="user.username", default="", label="操作人")
-    change_message = serializers.JSONField(source="change_message")
+    change_message = serializers.JSONField()
     content_type_name = serializers.CharField(source="object_repr", label="操作对象")
     domain_content_type_name = serializers.CharField(
         source="domain_content_type.name", default="", label="域对象名称"
