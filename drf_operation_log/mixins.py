@@ -18,6 +18,11 @@ from .utils import (
     serializer_data_diff,
 )
 
+try:
+    from django.conf import settings
+except ImportError:
+    pass
+
 logger = logging.getLogger(__name__)
 
 
@@ -239,7 +244,8 @@ class OperationLogMixin:
                 request=request,
                 operation_logs=self.operation_logs,
             )
-            OperationLogEntry.objects.bulk_create(self.operation_logs)
+            if getattr(settings, "DRF_OPERATION_LOG_SAVE_DATABASE", True):
+                OperationLogEntry.objects.bulk_create(self.operation_logs)
             self.operation_logs.clear()
 
         return super().finalize_response(request, response, *args, **kwargs)  # noqa
