@@ -119,6 +119,16 @@ class OperationLogMixin:
         super().perform_destroy(instance)  # noqa
 
     def get_excluded_log_fields(self, request) -> list:
+        """
+        获取日志排除字段
+        主表字段 key1, key2
+        ForeignKey key3.key31, key4.key41
+        OneToMany key5[].key51, key5[].key51
+        :param request:
+        :return: ["key1", "key2",
+            "key3.key31", "key4.key41",
+            "key5[].key51", "key5[].key52"]
+        """
         return []
 
     @action(
