@@ -32,6 +32,11 @@ djangorestframework = ">=3.13.1"
 [tool.poetry.group.dev.dependencies]
 flake8 = "^4.0.1"
 pytest = "^6.2.5"
+mkdocs = "^1.4.2"
+mkdocs-material = "^8.5.9"
+mkdocs-awesome-pages-plugin = "^2.8.0"
+mkdocs-include-markdown-plugin = "^3.9.1"
+mkdocstrings = {version = "^0.19.0", extras = ["python"]}
 
 [tool.black]
 line-length = 89
