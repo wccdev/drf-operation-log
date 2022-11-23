@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:xhtml="http://www.w3.org/1999/xhtml">
+    <url>
+         <loc>https://wccdev.github.io/drf-operation-log/</loc>
+         <lastmod>2022-11-23</lastmod>
+         <changefreq>daily</changefreq>
+         <xhtml:link rel="alternate" hreflang="en" href="https://wccdev.github.io/drf-operation-log/"/>
+         
+         
+    </url>
+    <url>
+         <loc>https://wccdev.github.io/drf-operation-log/api/</loc>
+         <lastmod>2022-11-23</lastmod>
+         <changefreq>daily</changefreq>
+         <xhtml:link rel="alternate" hreflang="en" href="https://wccdev.github.io/drf-operation-log/en/api/"/>
+         <xhtml:link rel="alternate" hreflang="zh" href="https://wccdev.github.io/drf-operation-log/zh/api/"/>
+         
+    </url>
+    <url>
+         <loc>https://wccdev.github.io/drf-operation-log/changelog/</loc>
+         <lastmod>2022-11-23</lastmod>
+         <changefreq>daily</changefreq>
+         <xhtml:link rel="alternate" hreflang="en" href="https://wccdev.github.io/drf-operation-log/en/changelog/"/>
+         <xhtml:link rel="alternate" hreflang="zh" href="https://wccdev.github.io/drf-operation-log/zh/changelog/"/>
+         
+    </url>
+    <url>
+         <loc>https://wccdev.github.io/drf-operation-log/contributing/</loc>
+         <lastmod>2022-11-23</lastmod>
+         <changefreq>daily</changefreq>
+         <xhtml:link rel="alternate" hreflang="en" href="https://wccdev.github.io/drf-operation-log/en/contributing/"/>
+         <xhtml:link rel="alternate" hreflang="zh" href="https://wccdev.github.io/drf-operation-log/zh/contributing/"/>
+         
+    </url>
+    <url>
+         <loc>https://wccdev.github.io/drf-operation-log/installation/</loc>
+         <lastmod>2022-11-23</lastmod>
+         <changefreq>daily</changefreq>
+         <xhtml:link rel="alternate" hreflang="en" href="https://wccdev.github.io/drf-operation-log/en/installation/"/>
+         <xhtml:link rel="alternate" hreflang="zh" href="https://wccdev.github.io/drf-operation-log/zh/installation/"/>
+         
+    </url>
+    <url>
+         <loc>https://wccdev.github.io/drf-operation-log/usage/</loc>
+         <lastmod>2022-11-23</lastmod>
+         <changefreq>daily</changefreq>
+         <xhtml:link rel="alternate" hreflang="en" href="https://wccdev.github.io/drf-operation-log/en/usage/"/>
+         <xhtml:link rel="alternate" hreflang="zh" href="https://wccdev.github.io/drf-operation-log/zh/usage/"/>
+         
+    </url>
+</urlset>
