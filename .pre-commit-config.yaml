@@ -11,6 +11,7 @@ repos:
       - id: mixed-line-ending
       - id: detect-private-key
       - id: check-yaml
+        args: ['--unsafe']
       - id: check-toml
 
   - repo: https://github.com/commitizen-tools/commitizen
