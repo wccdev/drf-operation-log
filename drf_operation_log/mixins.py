@@ -18,6 +18,11 @@ from .utils import (
     serializer_data_diff,
 )
 
+try:
+    from django.conf import settings
+except ImportError:
+    pass
+
 logger = logging.getLogger(__name__)
 
 
@@ -119,6 +124,16 @@ class OperationLogMixin:
         super().perform_destroy(instance)  # noqa
 
     def get_excluded_log_fields(self, request) -> list:
+        """
+        获取日志排除字段
+        主表字段 key1, key2
+        ForeignKey key3.key31, key4.key41
+        OneToMany key5[].key51, key5[].key51
+        :param request:
+        :return: ["key1", "key2",
+            "key3.key31", "key4.key41",
+            "key5[].key51", "key5[].key52"]
+        """
         return []
 
     @action(
@@ -229,7 +244,8 @@ class OperationLogMixin:
                 request=request,
                 operation_logs=self.operation_logs,
             )
-            OperationLogEntry.objects.bulk_create(self.operation_logs)
+            if getattr(settings, "DRF_OPERATION_LOG_SAVE_DATABASE", True):
+                OperationLogEntry.objects.bulk_create(self.operation_logs)
             self.operation_logs.clear()
 
         return super().finalize_response(request, response, *args, **kwargs)  # noqa

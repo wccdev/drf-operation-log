@@ -141,7 +141,7 @@ def clean_sensitive_data(data, sensitive_fields=sensitive_fields or {}):
 def serializer_changed_data_diff(
     old_data: dict,
     new_data: dict,
-    serializer: Serializer or None,
+    serializer: Serializer = None,
     trans_dic: dict = None,
 ) -> dict:
     """
