@@ -217,7 +217,7 @@ def serializer_data_diff(serializer: Serializer):
             if not new_k_data_list:
                 continue
             # 取出旧的子列表数据
-            old_k_data_list = getattr(serializer.instance, k)
+            old_k_data_list = getattr(serializer.instance, k, None)
             if not old_k_data_list:
                 continue
             else:
@@ -226,12 +226,14 @@ def serializer_data_diff(serializer: Serializer):
                 else:
                     old_k_data_list = old_k_data_list.all()
             # 构造旧的子列表【主键->对象】的映射关系
-            old_k_data_dict = {getattr(d, _primary_key_name): d for d in old_k_data_list}
+            old_k_data_dict = {
+                getattr(d, _primary_key_name, None): d for d in old_k_data_list
+            }
 
             # 遍历新的子列表数据
             for new_d in new_k_data_list:
                 # 获取主键的值
-                primary_key = new_d.get(_primary_key_name)
+                primary_key = new_d.get(_primary_key_name, None)
                 new_d_message = flatten_dict(new_d, level=2)
                 new_d_message.pop(_primary_key_name, None)
                 # 如果没有主键，认定为新增
