@@ -4,6 +4,7 @@ from django.contrib.contenttypes.models import ContentType
 from django.db.models import Model
 from rest_framework import serializers
 from rest_framework.decorators import action
+from rest_framework.request import Request
 from rest_framework.response import Response
 
 from .models import ADDITION, CHANGE, DELETION, OperationLogEntry
@@ -27,14 +28,14 @@ logger = logging.getLogger(__name__)
 
 
 class OperationLogMixin:
-    """
-    DRF 操作日志Mixin
+    """DRF 操作日志Mixin
+
     必须同时满足如下三个要求的操作才会记录
+
     1. 写操作(POST, PUT, PATCH, DELETE)
     2. 未被包含在`operationlog_action_exclude`中的action
     3. action 为 create, update, partial_update 或 destroy
 
-    自定义action需要自己创建operation_log
     """
 
     operationlog_action_exclude = []
@@ -123,16 +124,32 @@ class OperationLogMixin:
 
         super().perform_destroy(instance)  # noqa
 
-    def get_excluded_log_fields(self, request) -> list:
+    def get_excluded_log_fields(self, request: Request) -> list:
         """
-        获取日志排除字段
-        主表字段 key1, key2
-        ForeignKey key3.key31, key4.key41
-        OneToMany key5[].key51, key5[].key51
-        :param request:
-        :return: ["key1", "key2",
-            "key3.key31", "key4.key41",
-            "key5[].key51", "key5[].key52"]
+        Get the fields to be excluded from the log.
+        You can override this method to customize the control
+
+        class Model3:
+            key31 = models.CharField(max_length=255, verbose_name="key31")
+            key32 = models.CharField(max_length=255, verbose_name="key32")
+            key...
+
+        class Model2:
+            key1 = models.CharField(max_length=255)
+            key2 = models.CharField(max_length=255)
+            key3 = ForeignKey(Model3)
+            key...
+
+        class Model4:
+            key41 = models.CharField(max_length=255, verbose_name="key41")
+            key42 = models.CharField(max_length=255, verbose_name="key42")
+            key43 = ForeignKey(Model2, related_name="key4")
+            key...
+
+        return ["key1", "key2", "key3.key31", "key4[].key41", "key4[].key42"]
+
+        Returns:
+            The fields to be excluded from the log
         """
         return []
 
@@ -141,12 +158,16 @@ class OperationLogMixin:
         name="操作日志",
         serializer_class=OperationLogEntrySerializer,
     )
-    def operationlogs(self, request, pk):
+    def operationlogs(self, request: Request, pk: int) -> Response:
         """
-        获取该资源操作日志接口
-        :param request:
-        :param pk: 主键
-        :return:
+        Get the operation log of this resource
+
+        Args:
+            request:
+            pk: the primary key of the resource
+
+        Returns:
+            The operation log of this resource
         """
         excluded_fields = self.get_excluded_log_fields(request)
         queryset = OperationLogEntry.objects.select_related(
@@ -174,11 +195,16 @@ class OperationLogMixin:
         serializer = self.get_serializer(queryset, many=True)  # noqa
         return Response(serializer.data)
 
-    def should_log(self, request) -> bool:
+    def should_log(self, request: Request) -> bool:
         """
-        是否记录操作日志, 可以覆盖此方法来自定义控制
-        :param request:
-        :return:
+        Whether to record the operation log.
+        This method can be overridden to customize the control
+
+        Args:
+            request:
+
+        Returns:
+            Whether to record the operation log
         """
         return (
             request.method.upper() in ("POST", "PUT", "PATCH", "DELETE")
