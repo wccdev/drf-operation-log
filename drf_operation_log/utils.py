@@ -262,8 +262,8 @@ def serializer_data_diff(serializer: Serializer):
 
             # 遍历完新的子表数据，仍在旧表中的数据，认定为已从新的数据中删除
             if old_k_data_dict:
-                for _, _ in old_k_data_dict.items():
-                    child_changed_list.append({"deleted": []})
+                for _, old_value in old_k_data_dict.items():
+                    child_changed_list.append({"deleted": [str(old_value)]})
             # 如果子表数据有变化，记录到总的记录中
             if child_changed_list:
                 changed_list.append(
