@@ -11,6 +11,8 @@ missing_value = object()
 CLEANED_SUBSTITUTE = "******"
 sensitive_fields = {}
 
+ignore_fields = ["created_at", "updated_at"]
+
 
 def split_get(o: object, concat_attr: str, sep: str = attribute_sep):
     for attr in concat_attr.split(sep):
@@ -160,6 +162,8 @@ def serializer_changed_data_diff(
 
         try:
             field = trans_dic[k_new]
+            if field in ignore_fields:
+                continue
             label = field.label or k_new
             if isinstance(field, ChoiceField):
                 v_mapping = dict(field.choices)
