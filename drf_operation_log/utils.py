@@ -9,7 +9,7 @@ attribute_sep = ">"
 missing_value = object()
 
 CLEANED_SUBSTITUTE = "******"
-sensitive_fields = {}
+sensitive_fields = []
 
 ignore_fields = ["created_at", "updated_at"]
 
@@ -96,7 +96,7 @@ def flatten_dict(
     )
 
 
-def clean_sensitive_data(data, sensitive_fields=sensitive_fields or {}):
+def clean_sensitive_data(data, sensitive_log_fields=sensitive_fields or []):
     if isinstance(data, bytes):
         data = data.decode(errors="replace")
 
@@ -124,9 +124,9 @@ def clean_sensitive_data(data, sensitive_fields=sensitive_fields or {}):
             "signature",
         }
 
-        if sensitive_fields:
+        if sensitive_log_fields:
             SENSITIVE_FIELDS = SENSITIVE_FIELDS | {
-                field.lower() for field in sensitive_fields
+                field.lower() for field in sensitive_log_fields
             }
         if "nested" in data:
             clean_sensitive_data(data.get("nested"))
@@ -145,6 +145,7 @@ def serializer_changed_data_diff(
     new_data: dict,
     serializer: Serializer = None,
     trans_dic: dict = None,
+    sensitive_log_fields: list = sensitive_fields,
 ) -> dict:
     """
     判断两个个序列化器校验后数据数据差异
@@ -183,7 +184,7 @@ def serializer_changed_data_diff(
                 "old_value": v_old,
                 "new_value": v_new,
             }
-            clean_sensitive_data(changed_msg)
+            clean_sensitive_data(changed_msg, sensitive_log_fields)
             changed_list.append(changed_msg)
         except KeyError:
             pass
@@ -192,7 +193,7 @@ def serializer_changed_data_diff(
     return ret
 
 
-def serializer_data_diff(serializer: Serializer):
+def serializer_data_diff(serializer: Serializer, sensitive_log_fields=sensitive_fields):
     # 子表字段
     many_fields = _get_many_fields(serializer)
     new_message = flatten_dict(
@@ -206,7 +207,7 @@ def serializer_data_diff(serializer: Serializer):
         _get_source_fields(serializer.fields), exclude_fields=many_fields.keys()
     )
     main_diff = serializer_changed_data_diff(
-        old_message, new_message, serializer, main_trans_dic
+        old_message, new_message, serializer, main_trans_dic, sensitive_log_fields
     )
 
     # 比较子表的差异
@@ -255,7 +256,11 @@ def serializer_data_diff(serializer: Serializer):
                         trans_dic = flatten_dict(_child_source_fields, level=2)
                         # 比较差异，如果有差异，放入差异列表中
                         child_diff = serializer_changed_data_diff(
-                            old_d_message, new_d_message, None, trans_dic
+                            old_d_message,
+                            new_d_message,
+                            None,
+                            trans_dic,
+                            sensitive_log_fields,
                         )
                         if child_diff:
                             child_changed_list.append(child_diff)

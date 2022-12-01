@@ -104,7 +104,9 @@ class OperationLogMixin:
     def perform_update(self, serializer):
         request = self.request  # noqa
         if self.should_log(request):
-            change_message = serializer_data_diff(serializer)
+            change_message = serializer_data_diff(
+                serializer, self.get_sensitive_log_fields(request)
+            )
 
             operation_log = self._initial_log(
                 request,
@@ -123,6 +125,9 @@ class OperationLogMixin:
             self.operation_logs.append(operation_log)
 
         super().perform_destroy(instance)  # noqa
+
+    def get_sensitive_log_fields(self, request: Request) -> list:
+        return []
 
     def get_excluded_log_fields(self, request: Request) -> list:
         """
