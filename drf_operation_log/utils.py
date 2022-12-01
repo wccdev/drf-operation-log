@@ -3,7 +3,11 @@ from collections.abc import MutableMapping
 
 from django.db.models import Manager, Model
 from rest_framework.fields import BooleanField, ChoiceField
-from rest_framework.serializers import ListSerializer, Serializer
+from rest_framework.serializers import (
+    ListSerializer,
+    PrimaryKeyRelatedField,
+    Serializer,
+)
 
 attribute_sep = ">"
 missing_value = object()
@@ -107,13 +111,13 @@ def clean_sensitive_data(data, sensitive_log_fields=sensitive_fields or []):
     if isinstance(data, dict):
 
         if "changed" in data:
-            clean_sensitive_data(data.get("changed"))
+            clean_sensitive_data(data.get("changed"), sensitive_log_fields)
 
         if "added" in data:
-            clean_sensitive_data(data.get("added"))
+            clean_sensitive_data(data.get("added"), sensitive_log_fields)
 
         if "deleted" in data:
-            clean_sensitive_data(data.get("deleted"))
+            clean_sensitive_data(data.get("deleted"), sensitive_log_fields)
 
         SENSITIVE_FIELDS: set = {
             "api",
@@ -129,7 +133,7 @@ def clean_sensitive_data(data, sensitive_log_fields=sensitive_fields or []):
                 field.lower() for field in sensitive_log_fields
             }
         if "nested" in data:
-            clean_sensitive_data(data.get("nested"))
+            clean_sensitive_data(data.get("nested"), sensitive_log_fields)
         elif "field" in data:
             if (
                 data.get("field", None) in SENSITIVE_FIELDS
@@ -175,6 +179,12 @@ def serializer_changed_data_diff(
             elif isinstance(field, BooleanField):
                 v_old = "是" if v_old else "否"
                 v_new = "是" if v_new else "否"
+            elif (
+                isinstance(field, PrimaryKeyRelatedField)
+                and isinstance(v_new, Model)
+                and isinstance(v_old, int)
+            ):
+                v_new = v_new.pk
 
             if v_old == v_new or v_old == missing_value:
                 continue
