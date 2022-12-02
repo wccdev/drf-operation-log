@@ -18,9 +18,13 @@ sensitive_fields = []
 ignore_fields = ["created_at", "updated_at"]
 
 
-def split_get(o: object, concat_attr: str, sep: str = attribute_sep):
+def split_get(
+    o: object, concat_attr: str, sep: str = attribute_sep, o_fileds: list = None
+):
     for attr in concat_attr.split(sep):
         try:
+            if o_fileds and attr not in o_fileds:
+                return missing_value
             o = getattr(o, attr)
         except AttributeError:
             return missing_value
@@ -261,8 +265,15 @@ def serializer_data_diff(serializer: Serializer, sensitive_log_fields=sensitive_
                     old_d = old_k_data_dict.pop(primary_key, None)
                     if old_d:
                         old_d_message = {}
+                        old_d_fields = list()
+                        if isinstance(old_d, Model):
+                            old_d_fields = [
+                                old_field.name for old_field in old_d._meta.fields
+                            ]
                         for d_k in new_d_message.keys():
-                            old_d_message[d_k] = split_get(old_d, d_k)
+                            old_d_message[d_k] = split_get(
+                                old_d, d_k, o_fileds=old_d_fields
+                            )
                         trans_dic = flatten_dict(_child_source_fields, level=2)
                         # 比较差异，如果有差异，放入差异列表中
                         child_diff = serializer_changed_data_diff(
