@@ -1,6 +1,7 @@
 from rest_framework import serializers
 
 from .models import OperationLogEntry
+from .utils import clean_deep_data, clean_excluded_fields, format_excluded_fields
 
 
 class OperationLogEntrySerializer(serializers.ModelSerializer):
@@ -22,3 +23,19 @@ class OperationLogEntrySerializer(serializers.ModelSerializer):
             "user",
             "action_flag",
         ]
+
+    def to_representation(self, instance):
+        excluded_log_fields = self.context.get("excluded_log_fields", [])
+        if instance.change_message:
+            if excluded_log_fields:
+                formatted_excluded_fields = format_excluded_fields(excluded_log_fields)
+                clean_excluded_fields(
+                    instance.change_message,
+                    formatted_excluded_fields[0],
+                    formatted_excluded_fields[1],
+                )
+
+            clean_deep_data(instance.change_message)
+
+        ret = super().to_representation(instance)
+        return ret

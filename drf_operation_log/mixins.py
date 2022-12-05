@@ -12,9 +12,7 @@ from .serializers import OperationLogEntrySerializer
 from .signals import operation_logs_pre_save
 from .utils import (
     clean_data,
-    clean_excluded_fields,
     flatten_dict,
-    format_excluded_fields,
     serializer_changed_data_diff,
     serializer_data_diff,
 )
@@ -185,19 +183,14 @@ class OperationLogMixin:
         queryset = self.filter_queryset(queryset)  # noqa
         page = self.paginate_queryset(queryset)  # noqa
         if page is not None:
-            serializer = self.get_serializer(page, many=True)  # noqa
+            serializer = self.get_serializer(
+                page, many=True, context={"excluded_log_fields": excluded_fields}
+            )  # noqa
             return self.get_paginated_response(serializer.data)  # noqa
 
-        if excluded_fields:
-            formatted_excludes_fields = format_excluded_fields(excluded_fields)
-            for q in queryset:
-                q.changed_message = clean_excluded_fields(
-                    q.changed_message,
-                    formatted_excludes_fields[0],
-                    formatted_excludes_fields[1],
-                )
-
-        serializer = self.get_serializer(queryset, many=True)  # noqa
+        serializer = self.get_serializer(
+            queryset, many=True, context={"excluded_log_fields": excluded_fields}
+        )  # noqa
         return Response(serializer.data)
 
     def should_log(self, request: Request) -> bool:

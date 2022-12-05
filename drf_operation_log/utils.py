@@ -300,7 +300,7 @@ def serializer_data_diff(serializer: Serializer, sensitive_log_fields=sensitive_
     if main_diff:
         return [main_diff]
     else:
-        return []
+        return [{"changed": []}]
 
 
 def clean_data(data, sensitive_fields=None):
@@ -419,3 +419,22 @@ def clean_excluded_fields(
                                             _clean_excluded_fields(
                                                 level_2_changed, level_2_excluded_fields
                                             )
+
+
+def clean_deep_data(change_message):
+
+    if change_message:
+        for d0 in change_message:
+            if "changed" in d0:
+                d1_change_list = d0["changed"]
+                for d2 in d1_change_list:
+                    if "nested" in d2:
+                        clean_deep_data(d2["nested"])
+                    else:
+                        new_value = d2.get("new_value")
+                        if (
+                            new_value
+                            and isinstance(new_value, list)
+                            and isinstance(new_value[0], dict)
+                        ):
+                            d2["new_value"] = "数据有更新"
