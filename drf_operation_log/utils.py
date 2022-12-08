@@ -439,12 +439,5 @@ def clean_deep_data(change_message):
                         ):
                             d2["new_value"] = "数据有更新"
 
-                        old_value = d2.get("old_value")
-                        if old_value and (
-                            (
-                                isinstance(old_value, list)
-                                and isinstance(old_value[0], Model)
-                            )
-                            or isinstance(old_value, Model)
-                        ):
-                            d2["old_value"] = "数据有更新"
+                            if d2.get("old_value"):
+                                d2["old_value"] = "数据有更新"
