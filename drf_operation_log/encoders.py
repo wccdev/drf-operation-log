@@ -26,10 +26,7 @@ class JSONEncoder(json.JSONEncoder):
         if isinstance(obj, Promise):
             return force_str(obj)
         elif isinstance(obj, datetime.datetime):
-            representation = obj.isoformat()
-            if representation.endswith("+00:00"):
-                representation = representation[:-6] + "Z"
-            return representation
+            return obj.strftime("%Y-%m-%d %H:%M:%S")
         elif isinstance(obj, datetime.date):
             return obj.isoformat()
         elif isinstance(obj, datetime.time):

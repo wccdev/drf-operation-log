@@ -3,7 +3,7 @@ create = true
 in-project = true
 
 [tool.commitizen]
-version = "1.0.2"
+version = "1.0.9"
 tag_format = "v$major.$minor.$patch$prerelease"
 version_files = [
     "pyproject.toml:version",
@@ -12,7 +12,7 @@ version_files = [
 
 [tool.poetry]
 name = "drf-operation-log"
-version = "1.0.2"
+version = "1.0.9"
 description = "Operation log for drf serializers."
 authors = ["aiden_lu <aiden_lu@wochacha.com>"]
 

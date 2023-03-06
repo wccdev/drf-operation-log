@@ -3,18 +3,28 @@ from collections.abc import MutableMapping
 
 from django.db.models import Manager, Model
 from rest_framework.fields import BooleanField, ChoiceField
-from rest_framework.serializers import ListSerializer, Serializer
+from rest_framework.serializers import (
+    ListSerializer,
+    PrimaryKeyRelatedField,
+    Serializer,
+)
 
 attribute_sep = ">"
 missing_value = object()
 
 CLEANED_SUBSTITUTE = "******"
-sensitive_fields = {}
+sensitive_fields = []
+
+ignore_fields = ["created_at", "updated_at"]
 
 
-def split_get(o: object, concat_attr: str, sep: str = attribute_sep):
+def split_get(
+    o: object, concat_attr: str, sep: str = attribute_sep, o_fileds: list = None
+):
     for attr in concat_attr.split(sep):
         try:
+            if o_fileds and attr not in o_fileds:
+                return missing_value
             o = getattr(o, attr)
         except AttributeError:
             return missing_value
@@ -94,7 +104,7 @@ def flatten_dict(
     )
 
 
-def clean_sensitive_data(data, sensitive_fields=sensitive_fields or {}):
+def clean_sensitive_data(data, sensitive_log_fields=sensitive_fields or []):
     if isinstance(data, bytes):
         data = data.decode(errors="replace")
 
@@ -105,13 +115,13 @@ def clean_sensitive_data(data, sensitive_fields=sensitive_fields or {}):
     if isinstance(data, dict):
 
         if "changed" in data:
-            clean_sensitive_data(data.get("changed"))
+            clean_sensitive_data(data.get("changed"), sensitive_log_fields)
 
         if "added" in data:
-            clean_sensitive_data(data.get("added"))
+            clean_sensitive_data(data.get("added"), sensitive_log_fields)
 
         if "deleted" in data:
-            clean_sensitive_data(data.get("deleted"))
+            clean_sensitive_data(data.get("deleted"), sensitive_log_fields)
 
         SENSITIVE_FIELDS: set = {
             "api",
@@ -122,12 +132,12 @@ def clean_sensitive_data(data, sensitive_fields=sensitive_fields or {}):
             "signature",
         }
 
-        if sensitive_fields:
+        if sensitive_log_fields:
             SENSITIVE_FIELDS = SENSITIVE_FIELDS | {
-                field.lower() for field in sensitive_fields
+                field.lower() for field in sensitive_log_fields
             }
         if "nested" in data:
-            clean_sensitive_data(data.get("nested"))
+            clean_sensitive_data(data.get("nested"), sensitive_log_fields)
         elif "field" in data:
             if (
                 data.get("field", None) in SENSITIVE_FIELDS
@@ -143,6 +153,7 @@ def serializer_changed_data_diff(
     new_data: dict,
     serializer: Serializer = None,
     trans_dic: dict = None,
+    sensitive_log_fields: list = sensitive_fields,
 ) -> dict:
     """
     判断两个个序列化器校验后数据数据差异
@@ -160,6 +171,8 @@ def serializer_changed_data_diff(
 
         try:
             field = trans_dic[k_new]
+            if field in ignore_fields:
+                continue
             label = field.label or k_new
             if isinstance(field, ChoiceField):
                 v_mapping = dict(field.choices)
@@ -170,6 +183,12 @@ def serializer_changed_data_diff(
             elif isinstance(field, BooleanField):
                 v_old = "是" if v_old else "否"
                 v_new = "是" if v_new else "否"
+            elif (
+                isinstance(field, PrimaryKeyRelatedField)
+                and isinstance(v_new, Model)
+                and isinstance(v_old, int)
+            ):
+                v_new = v_new.pk
 
             if v_old == v_new or v_old == missing_value:
                 continue
@@ -179,7 +198,7 @@ def serializer_changed_data_diff(
                 "old_value": v_old,
                 "new_value": v_new,
             }
-            clean_sensitive_data(changed_msg)
+            clean_sensitive_data(changed_msg, sensitive_log_fields)
             changed_list.append(changed_msg)
         except KeyError:
             pass
@@ -188,7 +207,7 @@ def serializer_changed_data_diff(
     return ret
 
 
-def serializer_data_diff(serializer: Serializer):
+def serializer_data_diff(serializer: Serializer, sensitive_log_fields=sensitive_fields):
     # 子表字段
     many_fields = _get_many_fields(serializer)
     new_message = flatten_dict(
@@ -202,7 +221,7 @@ def serializer_data_diff(serializer: Serializer):
         _get_source_fields(serializer.fields), exclude_fields=many_fields.keys()
     )
     main_diff = serializer_changed_data_diff(
-        old_message, new_message, serializer, main_trans_dic
+        old_message, new_message, serializer, main_trans_dic, sensitive_log_fields
     )
 
     # 比较子表的差异
@@ -246,20 +265,31 @@ def serializer_data_diff(serializer: Serializer):
                     old_d = old_k_data_dict.pop(primary_key, None)
                     if old_d:
                         old_d_message = {}
+                        old_d_fields = list()
+                        if isinstance(old_d, Model):
+                            old_d_fields = [
+                                old_field.name for old_field in old_d._meta.fields
+                            ]
                         for d_k in new_d_message.keys():
-                            old_d_message[d_k] = split_get(old_d, d_k)
+                            old_d_message[d_k] = split_get(
+                                old_d, d_k, o_fileds=old_d_fields
+                            )
                         trans_dic = flatten_dict(_child_source_fields, level=2)
                         # 比较差异，如果有差异，放入差异列表中
                         child_diff = serializer_changed_data_diff(
-                            old_d_message, new_d_message, None, trans_dic
+                            old_d_message,
+                            new_d_message,
+                            None,
+                            trans_dic,
+                            sensitive_log_fields,
                         )
                         if child_diff:
                             child_changed_list.append(child_diff)
 
             # 遍历完新的子表数据，仍在旧表中的数据，认定为已从新的数据中删除
             if old_k_data_dict:
-                for _, _ in old_k_data_dict.items():
-                    child_changed_list.append({"deleted": []})
+                for _, old_value in old_k_data_dict.items():
+                    child_changed_list.append({"deleted": [str(old_value)]})
             # 如果子表数据有变化，记录到总的记录中
             if child_changed_list:
                 changed_list.append(
@@ -270,7 +300,7 @@ def serializer_data_diff(serializer: Serializer):
     if main_diff:
         return [main_diff]
     else:
-        return []
+        return [{"changed": []}]
 
 
 def clean_data(data, sensitive_fields=None):
@@ -389,3 +419,25 @@ def clean_excluded_fields(
                                             _clean_excluded_fields(
                                                 level_2_changed, level_2_excluded_fields
                                             )
+
+
+def clean_deep_data(change_message):
+
+    if change_message:
+        for d0 in change_message:
+            if "changed" in d0:
+                d1_change_list = d0["changed"]
+                for d2 in d1_change_list:
+                    if "nested" in d2:
+                        clean_deep_data(d2["nested"])
+                    else:
+                        new_value = d2.get("new_value")
+                        if (
+                            new_value
+                            and isinstance(new_value, list)
+                            and isinstance(new_value[0], dict)
+                        ):
+                            d2["new_value"] = "数据有更新"
+
+                            if d2.get("old_value"):
+                                d2["old_value"] = "数据有更新"
