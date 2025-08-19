@@ -1,3 +1,9 @@
+## v1.1.0 (2025-08-19)
+
+### Feat
+
+- replace deprecated 'index_together' with 'indexes'
+
 ## v1.0.9 (2022-12-08)
 
 ### Fix
