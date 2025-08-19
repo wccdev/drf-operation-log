@@ -95,7 +95,7 @@ class OperationLogEntry(models.Model):
         verbose_name = verbose_name_plural = _("操作日志")
         db_table = "drf_operation_log"
         ordering = ["-action_time"]
-        index_together = ("content_type", "object_id")
+        indexes = [models.Index(fields=["content_type", "object_id"])]
 
     def __repr__(self):
         return str(self.action_time)
